@@ -1,0 +1,39 @@
+# --- Python ---
+# Игнорировать кеш байт-кода Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Игнорировать виртуальное окружение
+venv/
+.venv/
+env/
+
+# --- Системные файлы ОС ---
+# macOS
+.DS_Store
+# Windows
+Thumbs.db
+# Linux
+*~
+
+# --- Редакторы и IDE ---
+# VS Code
+.vscode/
+# JetBrains (PyCharm, IDEA и др.)
+.idea/
+
+# --- Логи, временные файлы, базы данных ---
+*.log
+*.tmp
+*.sqlite3
+db.sqlite3
+
+# --- Собранные файлы и артефакты ---
+/build/
+/dist/
+*.egg-info/
+
+# --- Файлы с секретами ---
+.env
+.env.local
