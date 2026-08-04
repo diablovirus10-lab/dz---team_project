@@ -1,0 +1,3 @@
+-- Seed data for chatbot database
+-- INSERT INTO users (vk_id, first_name, last_name, gender, age, created_at)
+-- VALUES ('12345', 'Ivan', 'Ivanov', 'male', 25, '2026-08-04');
