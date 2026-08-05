@@ -20,10 +20,20 @@ CREATE TABLE IF NOT EXISTS candidates (
     age INTEGER,                                        -- Возраст
     city VARCHAR(100),                                  -- Город
     profile_link VARCHAR(255),                          -- Ссылка на профиль VK
-    photo_1 VARCHAR(255),                               -- ID первого фото
-    photo_2 VARCHAR(255),                               -- ID второго фото
-    photo_3 VARCHAR(255),                               -- ID третьего фото
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP      -- Дата регистрации
+);
+
+-- таблица фотографий
+CREATE TABLE IF NOT EXISTS photos (
+    id SERIAL PRIMARY KEY,                                               -- ID
+    candidate_id INTEGER REFERENCES candidates(id) ON DELETE CASCADE,    --ID в таблице candidates
+    photo_url VARCHAR(255) NOT NULL,                                     -- Ссылка на фото
+    photo_id VARCHAR(100) NOT NULL,                                      -- ID фото в VK
+    likes_count INTEGER DEFAULT 0,                                       -- Количество лайков
+    comments_count INTEGER DEFAULT 0,                                    -- Количество комментариев (Можно использовать для определения популярности: likes + comments)
+    is_avatar BOOLEAN DEFAULT FALSE,                                     -- Это аватарка, (Если у пользователя нет других фото, показываем аватарку)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,                      --Дата и время добавления фото
+    UNIQUE(candidate_id, photo_id)
 );
 
 -- таблица найденных людей
