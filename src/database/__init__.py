@@ -1,7 +1,8 @@
-"""Database package for the chatbot project."""
+from .config import DatabaseConfig
+from .db_manager import Database, db
 
-from .db_manager import Database
-from .models import create_tables
-from .config import DATABASE_CONFIG
-
-__all__ = ["Database", "create_tables", "DATABASE_CONFIG"]
+__all__ = [
+    'DatabaseConfig',
+    'Database',
+    'db',
+]
