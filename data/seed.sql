@@ -1,16 +1,16 @@
 -- ============================================
 -- 1. Очистка таблиц (для перезаполнения)
 -- ============================================
-TRUNCATE TABLE users CASCADE;
-TRUNCATE TABLE candidates CASCADE;
-TRUNCATE TABLE photos CASCADE;
-TRUNCATE TABLE favorites CASCADE;
-TRUNCATE TABLE blacklist CASCADE;
-TRUNCATE TABLE user_interests CASCADE;
-TRUNCATE TABLE interests CASCADE;
-TRUNCATE TABLE search_weights CASCADE;
-TRUNCATE TABLE viewed_candidates CASCADE;
-TRUNCATE TABLE search_offsets CASCADE;
+TRUNCATE TABLE users RESTART IDENTITY CASCADE;
+TRUNCATE TABLE candidates RESTART IDENTITY CASCADE;
+TRUNCATE TABLE photos RESTART IDENTITY CASCADE;
+TRUNCATE TABLE favorites RESTART IDENTITY CASCADE;
+TRUNCATE TABLE blacklist RESTART IDENTITY CASCADE;
+TRUNCATE TABLE user_interests RESTART IDENTITY CASCADE;
+TRUNCATE TABLE interests RESTART IDENTITY CASCADE;
+TRUNCATE TABLE search_weights RESTART IDENTITY CASCADE;
+TRUNCATE TABLE viewed_candidates RESTART IDENTITY CASCADE;
+TRUNCATE TABLE search_offsets RESTART IDENTITY CASCADE;
 
 -- ============================================
 -- 2. Пользователи бота (5 человек)
@@ -276,8 +276,8 @@ INSERT INTO viewed_candidates (user_id, candidate_id) VALUES
 -- 11. Обход лимита (search_offsets)
 -- ============================================
 INSERT INTO search_offsets (user_id, offset_value, batch_size, search_params, total_found, last_search_timestamp) VALUES
-(1, 50, 20, '{"city":"Москва","age":25,"sex":1,"offset":50}', 150, CURRENT_TIMESTAMP),
-(2, 100, 20, '{"city":"Санкт-Петербург","age":23,"sex":2,"offset":100}', 200, CURRENT_TIMESTAMP),
-(3, 25, 20, '{"city":"Москва","age":30,"sex":1,"offset":25}', 80, CURRENT_TIMESTAMP),
-(4, 75, 20, '{"city":"Казань","age":27,"sex":2,"offset":75}', 120, CURRENT_TIMESTAMP),
-(5, 0, 20, '{"city":"Новосибирск","age":22,"sex":1,"offset":0}', 45, CURRENT_TIMESTAMP);
+(1, 50, 20, '{"city": "Москва", "age": 25, "sex": 1, "offset": 50}', 150, CURRENT_TIMESTAMP),
+(2, 100, 20, '{"city": "Санкт-Петербург", "age": 23, "sex": 2, "offset": 100}', 200, CURRENT_TIMESTAMP),
+(3, 25, 20, '{"city": "Москва", "age": 30, "sex": 1, "offset": 25}', 80, CURRENT_TIMESTAMP),
+(4, 75, 20, '{"city": "Казань", "age": 27, "sex": 2, "offset": 75}', 120, CURRENT_TIMESTAMP),
+(5, 0, 20, '{"city": "Новосибирск", "age": 22, "sex": 1, "offset": 0}', 45, CURRENT_TIMESTAMP);

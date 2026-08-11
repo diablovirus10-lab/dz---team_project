@@ -1,18 +1,32 @@
 import psycopg2
 from psycopg2 import sql
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import RealDictCursor, execute_values as pg_execute_values
 from typing import Optional, List, Dict, Any
 import json
 from datetime import datetime
 
 from .config import DatabaseConfig
+from .exceptions import DatabaseError
 
 
 class Database:
     def __init__(self):
         self.conn = None
-        self.cursor = None
-        self.connect()
+
+    def __enter__(self):
+        if not self.conn or self.conn.closed:
+            self.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.conn and not self.conn.closed:
+            if exc_type:
+                try:
+                    self.conn.rollback()
+                except psycopg2.Error:
+                    pass
+        self.close()
+        return False
 
     def connect(self):
         """
@@ -20,49 +34,90 @@ class Database:
         """
         try:
             self.conn = psycopg2.connect(**DatabaseConfig.get_connection_params())
-            self.cursor = self.conn.cursor()
+            self.conn.autocommit = False
             return True
-        except Exception as e:
-            print(f"Ошибка подключения к БД: {e}")
-            return False
-
+        except psycopg2.Error as e:
+            self.conn = None
+            raise DatabaseError(f"Ошибка подключения к БД: {e}", original_error=e) from e
     def close(self):
         """
         Закрывает соединение с базой данных
         """
-        if self.cursor:
-            self.cursor.close()
-        if self.conn:
-            self.conn.close()
+        if self.conn is not None:
+            try:
+                self.conn.close()
+            except psycopg2.Error:
+                pass
+            finally:
+                self.conn = None
+
+    def _ensure_connection(self):
+        if not self.conn or self.conn.closed:
+            self.connect()
+
+    def _rollback(self):
+        if self.conn and not self.conn.closed:
+            try:
+                self.conn.rollback()
+            except psycopg2.Error:
+                pass
+
+    def _get_cursor(self, dict_cursor=False):
+        return self.conn.cursor(cursor_factory=RealDictCursor) if dict_cursor else self.conn.cursor()
+
+    def fetch_one(self, query, params=None, dict_cursor=False):
+        try:
+            self._ensure_connection()
+            with self._get_cursor(dict_cursor) as cursor:
+                cursor.execute(query, params or ())
+                return cursor.fetchone()
+        except psycopg2.Error as e:
+            self._rollback()
+            raise DatabaseError(f"Ошибка выполнения запроса fetch_one: {e}", original_error=e) from e
+
+    def fetch_all(self, query, params=None, dict_cursor=False):
+        try:
+            self._ensure_connection()
+            with self._get_cursor(dict_cursor) as cursor:
+                cursor.execute(query, params or ())
+                return cursor.fetchall()
+        except psycopg2.Error as e:
+            self._rollback()
+            raise DatabaseError(f"Ошибка выполнения запроса fetch_all: {e}", original_error=e) from e
+
+    def execute_update(self, query, params=None, dict_cursor=False, returning=False):
+        try:
+            self._ensure_connection()
+            with self._get_cursor(dict_cursor) as cursor:
+                cursor.execute(query, params or ())
+                result = cursor.fetchall() if returning else []
+            self.conn.commit()
+            return result
+        except psycopg2.Error as e:
+            self._rollback()
+            raise DatabaseError(f"Ошибка выполнения запроса execute_update: {e}", original_error=e) from e
+
+    def execute_values(self, query, values, template=None, page_size=100):
+        try:
+            self._ensure_connection()
+            with self.conn.cursor() as cursor:
+                pg_execute_values(cursor, query, values, template=template, page_size=page_size)
+            self.conn.commit()
+        except psycopg2.Error as e:
+            self._rollback()
+            raise DatabaseError(f"Ошибка выполнения запроса execute_values: {e}", original_error=e) from e
 
     def execute(self, query, params=None):
-        try:
-            if not self.conn or self.conn.closed:
-                self.connect()
-            self.cursor.execute(query, params or ())
-            if query.strip().upper().startswith('SELECT'):
-                return self.cursor.fetchall()
-            self.conn.commit()
-            return []
-        except Exception as e:
-            self.conn.rollback()
-            print(f"Ошибка выполнения запроса: {e}")
-            raise
+        stripped = query.strip().upper()
+        if stripped.startswith('SELECT') or (stripped.startswith('WITH') and 'RETURNING' not in stripped):
+            return self.fetch_all(query, params)
+        return self.execute_update(query, params, returning='RETURNING' in stripped)
 
     def execute_dict(self, query, params=None):
-        try:
-            if not self.conn or self.conn.closed:
-                self.connect()
-            cursor = self.conn.cursor(cursor_factory=RealDictCursor)
-            cursor.execute(query, params or ())
-            if query.strip().upper().startswith('SELECT'):
-                return cursor.fetchall()
-            self.conn.commit()
-            return []
-        except Exception as e:
-            self.conn.rollback()
-            print(f"Ошибка выполнения запроса: {e}")
-            raise
+        stripped = query.strip().upper()
+        if stripped.startswith('SELECT') or (stripped.startswith('WITH') and 'RETURNING' not in stripped):
+            return self.fetch_all(query, params, dict_cursor=True)
+        return self.execute_update(query, params, dict_cursor=True, returning='RETURNING' in stripped)
 
     def get_or_create_user(self, vk_id, first_name, last_name, age, city, sex):
         """Создание пользователя, проверяет если нет создает"""
@@ -270,21 +325,26 @@ class Database:
         return [row[0] for row in result] if result else []
 
     def save_user_interests(self, user_id, interests):
-        """Сохраняем интересы пользователя"""
+        """Сохраняем интересы пользователя атомарно (одной транзакцией)"""
         try:
-            # Сначала удаляем старые интересы (чтобы не было дублей)
-            self.execute("DELETE FROM user_interests WHERE user_id = %s", (user_id,))
-
-            # Добавляем новые интересы
-            for interest in interests:
-                query = """
-                    INSERT INTO user_interests (user_id, type, value, vk_entity_id)
-                    VALUES (%s, %s, %s, %s)
-                """
-                self.execute(query, (user_id, interest['type'], interest['value'], interest.get('vk_entity_id')))
+            self._ensure_connection()
+            with self.conn.cursor() as cursor:
+                cursor.execute("DELETE FROM user_interests WHERE user_id = %s", (user_id,))
+                if interests:
+                    values = [
+                        (user_id, i['type'], i['value'], i.get('vk_entity_id'))
+                        for i in interests
+                    ]
+                    pg_execute_values(
+                        cursor,
+                        "INSERT INTO user_interests (user_id, type, value, vk_entity_id) VALUES %s",
+                        values,
+                    )
+            self.conn.commit()   
             return True
-        except Exception:
-            return False
+        except psycopg2.Error as e:
+            self._rollback()
+            raise DatabaseError(f"Ошибка сохранения интересов: {e}", original_error=e) from e
 
     def get_user_interests(self, user_id):
         """Получаем интересы пользователя"""
@@ -294,13 +354,21 @@ class Database:
     def save_candidate_interests(self, candidate_id, interests):
         """Сохраняем интересы кандидата"""
         try:
-            for interest in interests:
-                query = """
-                    INSERT INTO interests (candidate_id, type, value, vk_entity_id)
-                    VALUES (%s, %s, %s, %s)
-                    ON CONFLICT (candidate_id, type, value) DO NOTHING
-                """
-                self.execute(query, (candidate_id, interest['type'], interest['value'], interest.get('vk_entity_id')))
+            if not interests:
+                return True
+
+            query = """
+                INSERT INTO interests (candidate_id, type, value, vk_entity_id)
+                VALUES %s
+                ON CONFLICT (candidate_id, type, value) DO NOTHING
+            """
+
+            values = [
+                (candidate_id, interest['type'], interest['value'], interest.get('vk_entity_id'))
+                for interest in interests
+            ]
+
+            self.execute_values(query, values)
             return True
         except Exception:
             return False
