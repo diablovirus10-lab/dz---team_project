@@ -1,6 +1,2 @@
-"""Message formatting helpers."""
+"""Message formatting helpers for dating bot."""
 
-
-def format_message(text, user_data=None):
-    """Format bot response text."""
-    return text

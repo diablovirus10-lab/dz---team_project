@@ -1,9 +1,3 @@
-"""Keyboard definitions for bot messages."""
+"""Keyboard definitions for dating bot."""
 
 
-def get_main_keyboard():
-    """Return the default keyboard layout."""
-    return {
-        "one_time": False,
-        "buttons": []
-    }
