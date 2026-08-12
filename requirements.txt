@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 certifi==2026.7.22
 charset-normalizer==3.4.9
 colorama==0.4.6
@@ -16,3 +17,9 @@ python-dotenv==1.2.2
 requests==2.34.2
 urllib3==2.7.0
 vk_api==11.10.1
+=======
+requests
+python-dotenv
+psycopg2-binary
+pytest
+>>>>>>> 4c471b25249ee11d90c9188fd38a2f3c2f901af1
