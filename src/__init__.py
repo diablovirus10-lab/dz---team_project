@@ -2,7 +2,7 @@
 
 __all__ = [
     "database",
-    "vk_api",
+    "vk_api_bot",
     "bot",
     "utils",
 ]
