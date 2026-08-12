@@ -12,6 +12,21 @@ TRUNCATE TABLE search_weights RESTART IDENTITY CASCADE;
 TRUNCATE TABLE viewed_candidates RESTART IDENTITY CASCADE;
 TRUNCATE TABLE search_offsets RESTART IDENTITY CASCADE;
 
+
+-- Сброс последовательностей
+SELECT setval('users_id_seq', 1, false);
+SELECT setval('candidates_id_seq', 1, false);
+SELECT setval('photos_id_seq', 1, false);
+SELECT setval('favorites_id_seq', 1, false);
+SELECT setval('blacklist_id_seq', 1, false);
+SELECT setval('user_interests_id_seq', 1, false);
+SELECT setval('interests_id_seq', 1, false);
+SELECT setval('search_weights_id_seq', 1, false);
+SELECT setval('viewed_candidates_id_seq', 1, false);
+SELECT setval('search_offsets_id_seq', 1, false);
+
+
+
 -- ============================================
 -- 2. Пользователи бота (5 человек)
 -- ============================================
