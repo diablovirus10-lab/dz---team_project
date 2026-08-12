@@ -1,4 +1,3 @@
-
 -- таблица пользователей
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,                              -- ID
@@ -110,7 +109,45 @@ CREATE TABLE IF NOT EXISTS search_offsets (
     UNIQUE(user_id)                                                    -- У одного пользователя может быть только одна запись с параметрами поиска
 );
 
+-- =========================
+-- Индексы для ускорения запросов
+-- =========================
 
+-- Внешние ключи (по user_id)
+CREATE INDEX IF NOT EXISTS idx_favorites_user_id ON favorites(user_id);
+CREATE INDEX IF NOT EXISTS idx_blacklist_user_id ON blacklist(user_id);
+CREATE INDEX IF NOT EXISTS idx_viewed_candidates_user_id ON viewed_candidates(user_id);
+CREATE INDEX IF NOT EXISTS idx_search_weights_user_id ON search_weights(user_id);
 
+-- Поля candidate_id
+CREATE INDEX IF NOT EXISTS idx_photos_candidate_id ON photos(candidate_id);
+CREATE INDEX IF NOT EXISTS idx_interests_candidate_id ON interests(candidate_id);
+CREATE INDEX IF NOT EXISTS idx_favorites_candidate_id ON favorites(candidate_id);
+CREATE INDEX IF NOT EXISTS idx_blacklist_candidate_id ON blacklist(candidate_id);
+CREATE INDEX IF NOT EXISTS idx_viewed_candidates_candidate_id ON viewed_candidates(candidate_id);
 
+-- =========================
+-- Триггер для автоматического обновления поля updated_at
+-- =========================
 
+-- Универсальная функция, устанавливающая updated_at при UPDATE
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Триггеры для таблиц со столбцом updated_at
+DROP TRIGGER IF EXISTS trg_search_weights_updated_at ON search_weights;
+CREATE TRIGGER trg_search_weights_updated_at
+BEFORE UPDATE ON search_weights
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_search_offsets_updated_at ON search_offsets;
+CREATE TRIGGER trg_search_offsets_updated_at
+BEFORE UPDATE ON search_offsets
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();

@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.pytest_cache
 
 # Игнорировать виртуальное окружение
 venv/
@@ -33,7 +34,8 @@ db.sqlite3
 /build/
 /dist/
 *.egg-info/
-
+task.md
+ 
 # Файлы с секретами
 .env
 .env.local
