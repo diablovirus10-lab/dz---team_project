@@ -1,7 +1,9 @@
-import psycopg2
 import json
-import sys
 import os
+import sys
+
+import psycopg2
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
@@ -15,10 +17,8 @@ def test_connection():
         conn = psycopg2.connect(**DatabaseConfig.get_connection_params())
         print("✅ Подключение успешно!")
         conn.close()
-        return True
     except Exception as e:
-        print(f"❌ Ошибка подключения: {e}")
-        return False
+        pytest.fail(f"❌ Ошибка подключения: {e}")
 
 
 def test_tables():
@@ -41,17 +41,15 @@ def test_tables():
         tables = [row[0] for row in cursor.fetchall()]
 
         missing = [t for t in expected if t not in tables]
-        if missing:
-            print(f"❌ Отсутствуют таблицы: {missing}")
-            return False
-
-        print(f"✅ Все 10 таблиц созданы: {', '.join(tables)}")
         cursor.close()
         conn.close()
-        return True
+
+        assert not missing, f"❌ Отсутствуют таблицы: {missing}"
+        print(f"✅ Все 10 таблиц созданы: {', '.join(tables)}")
+    except AssertionError:
+        raise
     except Exception as e:
-        print(f"❌ Ошибка: {e}")
-        return False
+        pytest.fail(f"❌ Ошибка: {e}")
 
 
 def test_data():
@@ -65,7 +63,7 @@ def test_data():
         conn = psycopg2.connect(**DatabaseConfig.get_connection_params())
         cursor = conn.cursor()
 
-        all_ok = True
+        empty_tables = []
         for table in tables:
             cursor.execute(f"SELECT COUNT(*) FROM {table}")
             count = cursor.fetchone()[0]
@@ -73,14 +71,15 @@ def test_data():
                 print(f"  ✅ {table}: {count} записей")
             else:
                 print(f"  ⚠️ {table}: 0 записей (пусто)")
-                all_ok = False
+                empty_tables.append(table)
 
         cursor.close()
         conn.close()
-        return all_ok
+        assert not empty_tables, f"❌ Пустые таблицы: {empty_tables}"
+    except AssertionError:
+        raise
     except Exception as e:
-        print(f"❌ Ошибка: {e}")
-        return False
+        pytest.fail(f"❌ Ошибка: {e}")
 
 
 def test_photos():
@@ -90,7 +89,6 @@ def test_photos():
         conn = psycopg2.connect(**DatabaseConfig.get_connection_params())
         cursor = conn.cursor()
 
-        # Проверяем наличие is_tagged и is_avatar
         cursor.execute("""
             SELECT column_name
             FROM information_schema.columns
@@ -110,7 +108,6 @@ def test_photos():
         else:
             print("  ❌ Нет колонки is_avatar")
 
-        # Проверяем количество аватарок и отмеченных фото
         cursor.execute("""
             SELECT 
                 COUNT(*) FILTER (WHERE is_avatar = TRUE) as avatars,
@@ -122,10 +119,13 @@ def test_photos():
 
         cursor.close()
         conn.close()
-        return 'is_tagged' in columns and 'is_avatar' in columns
+
+        assert 'is_tagged' in columns, "❌ Нет колонки is_tagged"
+        assert 'is_avatar' in columns, "❌ Нет колонки is_avatar"
+    except AssertionError:
+        raise
     except Exception as e:
-        print(f"❌ Ошибка: {e}")
-        return False
+        pytest.fail(f"❌ Ошибка: {e}")
 
 
 def test_foreign_keys():
@@ -156,10 +156,11 @@ def test_foreign_keys():
 
         cursor.close()
         conn.close()
-        return len(fks) > 0
+        assert len(fks) > 0, "❌ Внешние ключи не найдены"
+    except AssertionError:
+        raise
     except Exception as e:
-        print(f"❌ Ошибка: {e}")
-        return False
+        pytest.fail(f"❌ Ошибка: {e}")
 
 
 def test_search_offsets():
@@ -180,15 +181,28 @@ def test_search_offsets():
         for row in results:
             try:
                 params = json.loads(row[2])
-                print(f"    user_id={row[0]}, offset={row[1]}, total={row[3]}, city={params.get('city', 'N/A')}")
-            except:
+                print(
+                    f"    user_id={row[0]}, offset={row[1]}, "
+                    f"total={row[3]}, city={params.get('city', 'N/A')}"
+                )
+            except Exception:
                 print(f"    user_id={row[0]}, offset={row[1]}, total={row[3]}")
 
         cursor.close()
         conn.close()
-        return len(results) > 0
+        assert len(results) > 0, "❌ В search_offsets нет записей"
+    except AssertionError:
+        raise
     except Exception as e:
-        print(f"❌ Ошибка: {e}")
+        pytest.fail(f"❌ Ошибка: {e}")
+
+
+def _run_single_test(test_func):
+    """Запуск одного теста для режима python tests/test_db.py"""
+    try:
+        test_func()
+        return True
+    except Exception:
         return False
 
 
@@ -198,14 +212,16 @@ def run_all_tests():
     print("ТЕСТИРОВАНИЕ БАЗЫ ДАННЫХ")
     print("=" * 50)
 
-    results = []
+    tests = [
+        ("Подключение", test_connection),
+        ("Таблицы", test_tables),
+        ("Данные", test_data),
+        ("Photos", test_photos),
+        ("Внешние ключи", test_foreign_keys),
+        ("Search_offsets", test_search_offsets),
+    ]
 
-    results.append(("Подключение", test_connection()))
-    results.append(("Таблицы", test_tables()))
-    results.append(("Данные", test_data()))
-    results.append(("Photos", test_photos()))
-    results.append(("Внешние ключи", test_foreign_keys()))
-    results.append(("Search_offsets", test_search_offsets()))
+    results = [(name, _run_single_test(func)) for name, func in tests]
 
     print("\n" + "=" * 50)
     print("РЕЗУЛЬТАТЫ")
