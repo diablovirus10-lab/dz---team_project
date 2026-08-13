@@ -1,5 +1,5 @@
-import os
 import sys
+import types
 from datetime import date
 from types import SimpleNamespace
 
@@ -8,8 +8,8 @@ import pytest
 try:
     import vk_api
 except ImportError:
-    import types as _types
-    vk_api = _types.SimpleNamespace()
+    # Заглушка, если пакет vk_api не установлен — нужна для импорта VKClient
+    vk_api = types.SimpleNamespace(VkApi=object, ApiError=Exception)
     sys.modules["vk_api"] = vk_api
 
 from src.vk_api_bot import api_utils, exceptions
@@ -22,6 +22,9 @@ from src.vk_api_bot.exceptions import (
     VKUserNotFoundError,
 )
 from src.vk_api_bot.vk_client import VKClient
+
+# Патчим vk_api там, где его импортирует VKClient
+VK_API_MODULE = "src.vk_api_bot.vk_client.vk_api"
 
 
 class FakeVkApiError(Exception):
@@ -39,8 +42,12 @@ class FakeApi:
 
 def make_client(monkeypatch, api):
     monkeypatch.setenv("VK_GROUP_TOKEN", "test-token")
-    monkeypatch.setattr(vk_api, "VkApi", lambda *args, **kwargs: SimpleNamespace(get_api=lambda: api))
-    monkeypatch.setattr(vk_api, "ApiError", FakeVkApiError)
+    monkeypatch.setattr(
+        f"{VK_API_MODULE}.VkApi",
+        lambda *args, **kwargs: SimpleNamespace(get_api=lambda: api),
+        raising=False,
+    )
+    monkeypatch.setattr(f"{VK_API_MODULE}.ApiError", FakeVkApiError, raising=False)
     return VKClient()
 
 
@@ -224,13 +231,18 @@ def test_batch_request_calls_batches(monkeypatch):
 def test_vk_client_init_requires_token(monkeypatch):
     monkeypatch.delenv("VK_GROUP_TOKEN", raising=False)
     monkeypatch.delenv("VK_GROUP_ID", raising=False)
-    monkeypatch.setattr(vk_api, "VkApi", lambda *args, **kwargs: SimpleNamespace(get_api=lambda: None))
+    monkeypatch.setattr(
+        f"{VK_API_MODULE}.VkApi",
+        lambda *args, **kwargs: SimpleNamespace(get_api=lambda: None),
+        raising=False,
+    )
     with pytest.raises(VKAuthError):
         VKClient()
 
 
 def test_vk_client_init_reads_group_id(monkeypatch):
     api = FakeApi()
+    monkeypatch.delenv("VK_GROUP_ID", raising=False)
     client = make_client(monkeypatch, api)
     assert client.token == "test-token"
     assert client.group_id is None

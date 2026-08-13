@@ -33,10 +33,11 @@ class TestDatabaseConnection:
         """Тест: параметры подключения соответствуют .env"""
         params = DatabaseConfig.get_connection_params()
 
-        assert params['host'] == os.getenv('DB_HOST', 'localhost')
-        assert params['port'] == os.getenv('DB_PORT', '5432')
-        assert params['database'] == os.getenv('DB_NAME', 'finder_bot')
-        assert params['user'] == os.getenv('DB_USER', 'postgres')
+        assert params['host'] == DatabaseConfig.HOST
+        assert params['port'] == DatabaseConfig.PORT
+        assert params['database'] == DatabaseConfig.NAME
+        assert params['user'] == DatabaseConfig.USER
+        assert params['password'] == DatabaseConfig.PASSWORD
         assert len(params['password']) > 0
 
 

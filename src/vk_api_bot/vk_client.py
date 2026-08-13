@@ -165,3 +165,26 @@ class VKClient:
                 handle_vk_api_error(error)
             except VKAccessDeniedError:
                 return 0
+
+    @retry_on_rate_limit()
+    def send_message(self, user_id: int, text: str,
+                     keyboard: Optional[Any] = None,
+                     attachments: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Отправить сообщение пользователю."""
+        params: Dict[str, Any] = {
+            'user_id': user_id,
+            'message': text,
+            'random_id': 0,
+        }
+        if keyboard is not None:
+            import json
+            params['keyboard'] = json.dumps(keyboard, ensure_ascii=False)
+        if attachments:
+            params['attachment'] = ','.join(attachments)
+        
+        try:
+            response = self.api.messages.send(**params)
+        except vk_api.ApiError as error:
+            handle_vk_api_error(error)
+            raise
+        return response
