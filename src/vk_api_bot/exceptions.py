@@ -2,6 +2,7 @@
 
 from typing import Optional, Dict, Any
 
+
 class VKAPIError(Exception):
     """Базовое исключение для всех ошибок VK API"""
     def __init__(self, message: str, code: int = 0, request_params: Optional[Dict[str, Any]] = None):
@@ -49,4 +50,3 @@ class VKPhotoError(VKAPIError):
     """Ошибка при работе с фотографиями"""
     def __init__(self, message: str = "Failed to fetch photos", request_params=None):
         super().__init__(message, code=0, request_params=request_params)
-

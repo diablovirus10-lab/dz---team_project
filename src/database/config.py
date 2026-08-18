@@ -4,8 +4,7 @@
 
 import os
 import logging
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -18,7 +17,7 @@ class DatabaseConfig:
     NAME: str = os.getenv('DB_NAME', 'bot_db')
     USER: str = os.getenv('DB_USER', 'postgres')
     PASSWORD: str = os.getenv('DB_PASSWORD', '')
-    
+
     @classmethod
     def get_connection_params(cls) -> dict:
         return {
@@ -28,7 +27,7 @@ class DatabaseConfig:
             'user': cls.USER,
             'password': cls.PASSWORD
         }
-    
+
     def get_dsn(self) -> str:
         return f"postgresql://{self.USER}:{self.PASSWORD}@{self.HOST}:{self.PORT}/{self.NAME}"
 
@@ -38,15 +37,15 @@ class VKConfig:
     TOKEN: str = os.getenv('VK_TOKEN', '') or os.getenv('VK_GROUP_TOKEN', '')
     GROUP_ID: int = int(os.getenv('VK_GROUP_ID', '0') or '0')
     API_VERSION: str = os.getenv('VK_API_VERSION', '5.199')
-    
+
     def __post_init__(self):
         # Не вызываем ошибку при инициализации модуля, чтобы разрешить импорт без .env
         # Валидация будет выполнена при создании экземпляра бота
         pass
-    
+
     def is_valid(self) -> bool:
         return bool(self.TOKEN and self.GROUP_ID > 0)
-    
+
     def validate(self):
         """Явная валидация конфигурации."""
         if not self.TOKEN:
@@ -67,10 +66,10 @@ class LoggingConfig:
     FILE_PATH: str = os.getenv('LOG_FILE_PATH', 'logs/bot.log')
     FORMAT: str = '[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s'
     DATE_FORMAT: str = '%Y-%m-%d %H:%M:%S'
-    
+
     def get_level(self) -> int:
         return getattr(logging, self.LEVEL.upper(), logging.INFO)
-    
+
     def ensure_log_directory(self):
         log_dir = os.path.dirname(self.FILE_PATH)
         if log_dir:

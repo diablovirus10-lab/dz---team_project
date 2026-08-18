@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional, Set
 
 class DatabaseAdapter:
     """Адаптер между Database и интерфейсом, ожидаемым BotLogic.
-    
+
     BotLogic ожидает:
       - get_or_create_user(vk_id) -> int
       - add_favorite(user_vk_id, profile)
@@ -23,7 +23,7 @@ class DatabaseAdapter:
         user = self.database.get_user_by_vk(vk_id)
         if user:
             return user.get('id') or user.get('vk_id')
-        
+
         # Создаем пользователя с минимальными данными
         return vk_id  # возвращаем vk_id как ID для бота
 
