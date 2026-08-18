@@ -39,6 +39,7 @@ class Database:
         except psycopg2.Error as e:
             self.conn = None
             raise DatabaseError(f"Ошибка подключения к БД: {e}", original_error=e) from e
+
     def close(self):
         """
         Закрывает соединение с базой данных
@@ -150,7 +151,6 @@ class Database:
         )
         return result[0] if result else None
 
-
     def get_user(self, user_id):
         '''Получает пользователя по ID'''
         query = "SELECT * FROM users WHERE id = %s"
@@ -162,7 +162,6 @@ class Database:
         query = "SELECT * FROM users WHERE vk_id = %s"
         result = self.execute_dict(query, (vk_id,))
         return result[0] if result else None
-
 
     def save_candidate(self, vk_id, first_name, last_name, age, city, sex, profile_link):
         """Сохраняет кандидата в БД если нет то создаем нового"""
@@ -201,7 +200,6 @@ class Database:
             LIMIT %s
         """
         return self.execute_dict(query, (user_id, user_id, user_id, limit))
-
 
     def save_photo(self, candidate_id, photo_url, photo_id, likes_count=0, comments_count=0, is_avatar=False,
                    is_tagged=False):
@@ -559,6 +557,105 @@ class Database:
             return True
         except Exception:
             return False
+
+    def add_photo_like(self, user_id, photo_id, candidate_id, is_liked=True):
+        """
+        Ставит или убирает лайк с фотографии
+        
+        Args:
+            user_id: ID пользователя ВКонтакте
+            photo_id: ID фотографии в таблице photos
+            candidate_id: ID кандидата
+            is_liked: True для постановки лайка, False для удаления
+            
+        Returns:
+            True если успешно, False иначе
+        """
+        try:
+            if is_liked:
+                query = """
+                    INSERT INTO photo_likes (user_id, photo_id, candidate_id, is_liked)
+                    VALUES (%s, %s, %s, TRUE)
+                    ON CONFLICT (user_id, photo_id) DO UPDATE SET
+                        is_liked = TRUE,
+                        updated_at = CURRENT_TIMESTAMP
+                """
+            else:
+                query = """
+                    INSERT INTO photo_likes (user_id, photo_id, candidate_id, is_liked)
+                    VALUES (%s, %s, %s, FALSE)
+                    ON CONFLICT (user_id, photo_id) DO UPDATE SET
+                        is_liked = FALSE,
+                        updated_at = CURRENT_TIMESTAMP
+                """
+            self.execute(query, (user_id, photo_id, candidate_id))
+            return True
+        except Exception:
+            return False
+
+    def toggle_photo_like(self, user_id, photo_id, candidate_id):
+        """
+        Переключает состояние лайка на фотографии
+        
+        Args:
+            user_id: ID пользователя ВКонтакте
+            photo_id: ID фотографии в таблице photos
+            candidate_id: ID кандидата
+            
+        Returns:
+            True если лайк поставлен, False если убран, None при ошибке
+        """
+        try:
+            # Проверяем текущее состояние
+            query = "SELECT is_liked FROM photo_likes WHERE user_id = %s AND photo_id = %s"
+            result = self.execute_dict(query, (user_id, photo_id))
+            
+            if result and result[0]['is_liked']:
+                # Убираем лайк
+                self.add_photo_like(user_id, photo_id, candidate_id, is_liked=False)
+                return False
+            else:
+                # Ставим лайк
+                self.add_photo_like(user_id, photo_id, candidate_id, is_liked=True)
+                return True
+        except Exception:
+            return None
+
+    def get_photo_like_status(self, user_id, photo_id):
+        """
+        Проверяет, лайкнута ли фотография пользователем
+        
+        Args:
+            user_id: ID пользователя ВКонтакте
+            photo_id: ID фотографии в таблице photos
+            
+        Returns:
+            True если лайкнута, False если нет, None если не найдено
+        """
+        query = "SELECT is_liked FROM photo_likes WHERE user_id = %s AND photo_id = %s"
+        result = self.execute_dict(query, (user_id, photo_id))
+        if result:
+            return result[0]['is_liked']
+        return None
+
+    def get_user_liked_photos(self, user_id):
+        """
+        Получает список лайкнутых фотографий пользователем
+        
+        Args:
+            user_id: ID пользователя ВКонтакте
+            
+        Returns:
+            Список словарей с информацией о фотографиях
+        """
+        query = """
+            SELECT p.*, pl.is_liked, pl.created_at as liked_at
+            FROM photo_likes pl
+            JOIN photos p ON pl.photo_id = p.id
+            WHERE pl.user_id = %s AND pl.is_liked = TRUE
+            ORDER BY pl.created_at DESC
+        """
+        return self.execute_dict(query, (user_id,))
 
 
 # Создаём один объект БД для всего проекта

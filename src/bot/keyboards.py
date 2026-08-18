@@ -52,4 +52,7 @@ def get_browsing_keyboard():
             _button("⏭ Ещё анкета", {"cmd": "next"}, "primary"),
             _button("🏠 В меню", {"cmd": "menu"}, "secondary"),
         ],
+        [
+            _button("❤️ Лайкнуть фото", {"cmd": "photo_like"}, "positive"),
+        ],
     ])

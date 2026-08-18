@@ -99,10 +99,23 @@ CREATE TABLE IF NOT EXISTS search_offsets (
     UNIQUE(user_id)
 );
 
+CREATE TABLE IF NOT EXISTS photo_likes (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    photo_id INTEGER REFERENCES photos(id) ON DELETE CASCADE,
+    candidate_id INTEGER REFERENCES candidates(id) ON DELETE CASCADE,
+    is_liked BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, photo_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_favorites_user_id ON favorites(user_id);
 CREATE INDEX IF NOT EXISTS idx_blacklist_user_id ON blacklist(user_id);
 CREATE INDEX IF NOT EXISTS idx_viewed_candidates_user_id ON viewed_candidates(user_id);
 CREATE INDEX IF NOT EXISTS idx_search_weights_user_id ON search_weights(user_id);
+CREATE INDEX IF NOT EXISTS idx_photo_likes_user_id ON photo_likes(user_id);
+CREATE INDEX IF NOT EXISTS idx_photo_likes_photo_id ON photo_likes(photo_id);
 
 -- Поля candidate_id
 CREATE INDEX IF NOT EXISTS idx_photos_candidate_id ON photos(candidate_id);
@@ -128,5 +141,11 @@ EXECUTE FUNCTION set_updated_at();
 DROP TRIGGER IF EXISTS trg_search_offsets_updated_at ON search_offsets;
 CREATE TRIGGER trg_search_offsets_updated_at
 BEFORE UPDATE ON search_offsets
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_photo_likes_updated_at ON photo_likes;
+CREATE TRIGGER trg_photo_likes_updated_at
+BEFORE UPDATE ON photo_likes
 FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
