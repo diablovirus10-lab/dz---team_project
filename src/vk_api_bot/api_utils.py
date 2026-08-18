@@ -14,10 +14,10 @@ from .exceptions import (
 
 logger = logging.getLogger(__name__)
 
-RATE_LIMIT_CODES = (6, 29)                
-AUTH_ERROR_CODES = (5,)                   
-ACCESS_DENIED_CODES = (15, 18, 200, 203)  
-PARAMS_ERROR_CODES = (100,)               
+RATE_LIMIT_CODES = (6, 29)
+AUTH_ERROR_CODES = (5,)
+ACCESS_DENIED_CODES = (15, 18, 200, 203)
+PARAMS_ERROR_CODES = (100,)
 
 PHOTO_SIZE_PRIORITY = ('orig', 'photo_1280', 'photo_807', 'photo_604', 'photo_130')
 
@@ -153,18 +153,18 @@ def handle_vk_api_error(error: Exception) -> NoReturn:
 
 def retry_on_rate_limit(max_retries: int = 3, delay: float = 1.0):
     def decorator(func: Callable) -> Callable:
-        @wraps(func) 
+        @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             for attempt in range(max_retries):
                 try:
                     return func(*args, **kwargs)
-                except VKRateLimitError as error:
+                except VKRateLimitError:
                     logger.warning(
                         "Лимит VK API в %s: попытка %d/%d, пауза %.1f c",
                         func.__name__, attempt + 1, max_retries, delay,
                     )
                     if attempt == max_retries - 1:
-                        raise 
+                        raise
                     time.sleep(delay)
         return wrapper
     return decorator

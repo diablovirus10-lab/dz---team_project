@@ -1,9 +1,6 @@
 import psycopg2
-from psycopg2 import sql
 from psycopg2.extras import RealDictCursor, execute_values as pg_execute_values
-from typing import Optional, List, Dict, Any
 import json
-from datetime import datetime
 
 from .config import DatabaseConfig
 from .exceptions import DatabaseError
@@ -122,14 +119,14 @@ class Database:
 
     def get_or_create_user(self, vk_id, first_name=None, last_name=None, age=None, city=None, sex=None):
         """Создание пользователя или получение существующего.
-        
+
         Контракт с bot_logic: принимает только vk_id (остальные параметры опциональны).
         Если пользователь не найден, создаётся запись с минимальными данными.
-        
+
         Args:
             vk_id: ID пользователя ВКонтакте
             first_name, last_name, age, city, sex: Опциональные данные (могут быть заполнены позже)
-        
+
         Returns:
             Словарь с данными пользователя или None при ошибке
         """
@@ -146,7 +143,7 @@ class Database:
             RETURNING *
         """
         result = self.execute_dict(
-            query, 
+            query,
             (vk_id, first_name, last_name, age, city, sex)
         )
         return result[0] if result else None
@@ -205,7 +202,7 @@ class Database:
                    is_tagged=False):
         """Сохраняет ссылку фото кандидата"""
         query = """
-            INSERT INTO photos (candidate_id, photo_url, photo_id, likes_count, 
+            INSERT INTO photos (candidate_id, photo_url, photo_id, likes_count,
                                comments_count, is_avatar, is_tagged)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (candidate_id, photo_id) DO UPDATE SET
@@ -255,11 +252,11 @@ class Database:
 
     def add_favorite(self, user_id, profile):
         """Обёртка для совместимости с bot_logic.
-        
+
         Args:
             user_id: ID пользователя ВКонтакте
             profile: Словарь с данными профиля кандидата (должен содержать 'vk_id')
-        
+
         Returns:
             True если успешно, False иначе
         """
@@ -323,11 +320,11 @@ class Database:
 
     def add_blacklist(self, user_id, profile):
         """Обёртка для совместимости с bot_logic.
-        
+
         Args:
             user_id: ID пользователя ВКонтакте
             profile: Словарь с данными профиля кандидата (должен содержать 'vk_id')
-        
+
         Returns:
             True если успешно, False иначе
         """
@@ -391,11 +388,11 @@ class Database:
 
     def mark_viewed_profile(self, user_id, profile):
         """Обёртка для совместимости с bot_logic.
-        
+
         Args:
             user_id: ID пользователя ВКонтакте
             profile: Словарь с данными профиля кандидата (должен содержать 'vk_id')
-        
+
         Returns:
             True если успешно, False иначе
         """
@@ -426,19 +423,19 @@ class Database:
 
     def get_viewed_vk_ids(self, user_id):
         """Обёртка для совместимости с bot_logic.
-        
+
         Возвращает множество VK IDs просмотренных кандидатов.
-        
+
         Args:
             user_id: ID пользователя ВКонтакте
-        
+
         Returns:
             set[int]: Множество VK IDs просмотренных кандидатов
         """
         viewed_db_ids = self.get_viewed(user_id)
         if not viewed_db_ids:
             return set()
-        
+
         # Получаем VK IDs кандидатов из БД
         placeholders = ','.join('%s' for _ in viewed_db_ids)
         query = f"SELECT vk_id FROM candidates WHERE id IN ({placeholders})"
@@ -461,7 +458,7 @@ class Database:
                         "INSERT INTO user_interests (user_id, type, value, vk_entity_id) VALUES %s",
                         values,
                     )
-            self.conn.commit()   
+            self.conn.commit()
             return True
         except psycopg2.Error as e:
             self._rollback()
@@ -561,13 +558,13 @@ class Database:
     def add_photo_like(self, user_id, photo_id, candidate_id, is_liked=True):
         """
         Ставит или убирает лайк с фотографии
-        
+
         Args:
             user_id: ID пользователя ВКонтакте
             photo_id: ID фотографии в таблице photos
             candidate_id: ID кандидата
             is_liked: True для постановки лайка, False для удаления
-            
+
         Returns:
             True если успешно, False иначе
         """
@@ -596,12 +593,12 @@ class Database:
     def toggle_photo_like(self, user_id, photo_id, candidate_id):
         """
         Переключает состояние лайка на фотографии
-        
+
         Args:
             user_id: ID пользователя ВКонтакте
             photo_id: ID фотографии в таблице photos
             candidate_id: ID кандидата
-            
+
         Returns:
             True если лайк поставлен, False если убран, None при ошибке
         """
@@ -609,7 +606,7 @@ class Database:
             # Проверяем текущее состояние
             query = "SELECT is_liked FROM photo_likes WHERE user_id = %s AND photo_id = %s"
             result = self.execute_dict(query, (user_id, photo_id))
-            
+
             if result and result[0]['is_liked']:
                 # Убираем лайк
                 self.add_photo_like(user_id, photo_id, candidate_id, is_liked=False)
@@ -624,11 +621,11 @@ class Database:
     def get_photo_like_status(self, user_id, photo_id):
         """
         Проверяет, лайкнута ли фотография пользователем
-        
+
         Args:
             user_id: ID пользователя ВКонтакте
             photo_id: ID фотографии в таблице photos
-            
+
         Returns:
             True если лайкнута, False если нет, None если не найдено
         """
@@ -641,10 +638,10 @@ class Database:
     def get_user_liked_photos(self, user_id):
         """
         Получает список лайкнутых фотографий пользователем
-        
+
         Args:
             user_id: ID пользователя ВКонтакте
-            
+
         Returns:
             Список словарей с информацией о фотографиях
         """

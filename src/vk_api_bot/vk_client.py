@@ -36,7 +36,7 @@ class VKClient:
         try:
             rows = self.api.users.get(user_ids=vk_id, fields=self.PROFILE_FIELDS)
         except vk_api.ApiError as error:
-            handle_vk_api_error(error) 
+            handle_vk_api_error(error)
 
         if not rows:
             raise VKUserNotFoundError(vk_id)
@@ -74,7 +74,7 @@ class VKClient:
         if city_id:
             params['city'] = city_id
         else:
-            params['country'] = 1  
+            params['country'] = 1
 
         try:
             response = self.api.users.search(**params)
@@ -170,13 +170,13 @@ class VKClient:
     @retry_on_rate_limit()
     def send_message(self, user_id: int, text: str, keyboard=None, attachments=None) -> bool:
         """Отправить сообщение пользователю через VK API.
-        
+
         Args:
             user_id: ID пользователя ВКонтакте
             text: Текст сообщения
             keyboard: Inline-клавиатура (словарь в формате VK)
             attachments: Список вложений (например, ["photo123_456", ...])
-        
+
         Returns:
             True если сообщение отправлено успешно, False иначе
         """
@@ -185,19 +185,19 @@ class VKClient:
             'message': text,
             'random_id': 0,  # Будет заменён на уникальное значение
         }
-        
+
         # Добавляем случайное число для random_id
         import random
         params['random_id'] = random.randint(-2**31, 2**31 - 1)
-        
+
         # Добавляем клавиатуру если есть
         if keyboard is not None:
             params['keyboard'] = json.dumps(keyboard)
-        
+
         # Добавляем вложения если есть
         if attachments:
             params['attachment'] = ','.join(str(a) for a in attachments)
-        
+
         try:
             response = self.api.messages.send(**params)
             return response is not None and response != 0

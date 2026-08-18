@@ -29,9 +29,9 @@ async def db_manager(db_config: DatabaseConfig) -> AsyncGenerator[DatabaseManage
     manager = DatabaseManager(db_config)
     await manager.connect()
     await manager.create_tables()
-    
+
     yield manager
-    
+
     # Очистка после тестов
     await manager.disconnect()
 
@@ -52,13 +52,13 @@ class TestDatabaseIntegration:
         # Таблицы уже созданы в фикстуре db_manager
         # Проверяем, что они существуют
         tables = await db_manager.get_all_tables()
-        
+
         expected_tables = {
             'users', 'dialogs', 'messages', 'states',
             'commands', 'user_commands', 'intentions',
             'entities', 'user_intentions', 'api_logs'
         }
-        
+
         assert len(tables) >= len(expected_tables)
         for table in expected_tables:
             assert table in tables, f"Таблица {table} не найдена"
@@ -76,13 +76,13 @@ class TestDatabaseIntegration:
             sex=1
         )
         assert user_id > 0
-        
+
         # Read
         user = await clean_db.get_user_by_vk_id(12345)
         assert user is not None
         assert user['vk_id'] == 12345
         assert user['first_name'] == "Иван"
-        
+
         # Update (через get_or_create)
         updated_user = await clean_db.get_or_create_user(
             vk_id=12345,
@@ -107,17 +107,17 @@ class TestDatabaseIntegration:
             city="Казань",
             sex=1
         )
-        
+
         # Создаем диалог
         dialog_id = await clean_db.create_dialog(user_id)
         assert dialog_id > 0
-        
+
         # Получаем диалог
         dialog = await clean_db.get_dialog(dialog_id)
         assert dialog is not None
         assert dialog['user_id'] == user_id
         assert dialog['is_active'] is True
-        
+
         # Завершаем диалог
         await clean_db.close_dialog(dialog_id)
         closed_dialog = await clean_db.get_dialog(dialog_id)
@@ -136,7 +136,7 @@ class TestDatabaseIntegration:
             sex=1
         )
         dialog_id = await clean_db.create_dialog(user_id)
-        
+
         # Добавляем сообщения
         msg1_id = await clean_db.add_message(
             dialog_id=dialog_id,
@@ -148,10 +148,10 @@ class TestDatabaseIntegration:
             text="Здравствуйте!",
             is_from_user=False
         )
-        
+
         assert msg1_id > 0
         assert msg2_id > 0
-        
+
         # Получаем историю
         history = await clean_db.get_message_history(dialog_id, limit=10)
         assert len(history) == 2
@@ -170,16 +170,16 @@ class TestDatabaseIntegration:
             city="Москва",
             sex=1
         )
-        
+
         # Устанавливаем состояние
         await clean_db.set_user_state(user_id, "waiting_for_age", {"step": 1})
-        
+
         # Получаем состояние
         state = await clean_db.get_user_state(user_id)
         assert state is not None
         assert state['state_name'] == "waiting_for_age"
         assert state['data']['step'] == 1
-        
+
         # Очищаем состояние
         await clean_db.clear_user_state(user_id)
         cleared_state = await clean_db.get_user_state(user_id)
@@ -197,14 +197,14 @@ class TestDatabaseIntegration:
             city="СПб",
             sex=1
         )
-        
+
         # Регистрируем команду
         command_id = await clean_db.register_command("start", "/start - запуск бота")
         assert command_id > 0
-        
+
         # Отмечаем использование команды
         await clean_db.log_user_command(user_id, command_id)
-        
+
         # Получаем статистику
         user_commands = await clean_db.get_user_commands(user_id)
         assert len(user_commands) > 0
@@ -222,17 +222,17 @@ class TestDatabaseIntegration:
             city="Екб",
             sex=1
         )
-        
+
         # Создаем намерение
         intention_id = await clean_db.create_intention(
             name="greeting",
             pattern="привет|здравствуй|hello"
         )
         assert intention_id > 0
-        
+
         # Логируем намерение пользователя
         await clean_db.log_user_intention(user_id, intention_id, confidence=0.95)
-        
+
         # Получаем намерения пользователя
         intentions = await clean_db.get_user_intentions(user_id)
         assert len(intentions) > 0
@@ -243,7 +243,7 @@ class TestDatabaseIntegration:
         """Тест отката транзакций при ошибках."""
         initial_users = await clean_db.get_all_users()
         initial_count = len(initial_users)
-        
+
         try:
             # Начинаем транзакцию с ошибкой
             async with clean_db.pool.acquire() as conn:
@@ -253,12 +253,12 @@ class TestDatabaseIntegration:
                         INSERT INTO users (vk_id, first_name, last_name, age, city, sex)
                         VALUES ($1, $2, $3, $4, $5, $6)
                     """, 11111, "Транзакция", "Тестов", 25, "Москва", 1)
-                    
+
                     # Вызываем ошибку
                     raise Exception("Искусственная ошибка для теста")
         except Exception:
             pass  # Ожидаем ошибку
-        
+
         # Проверяем, что пользователь не был создан
         final_users = await clean_db.get_all_users()
         assert len(final_users) == initial_count
@@ -275,7 +275,7 @@ class TestDatabaseIntegration:
             city="Москва",
             sex=1
         )
-        
+
         with pytest.raises(Exception):
             # Попытка создать пользователя с тем же vk_id должна вызвать ошибку
             await clean_db.create_user(
@@ -286,7 +286,7 @@ class TestDatabaseIntegration:
                 city="СПб",
                 sex=1
             )
-        
+
         # Тест внешних ключей - нельзя создать диалог для несуществующего пользователя
         with pytest.raises(Exception):
             await clean_db.create_dialog(999999999)  # Пользователь не существует
@@ -303,9 +303,9 @@ class TestDatabaseIntegration:
             status_code=200,
             execution_time=0.15
         )
-        
+
         assert log_id > 0
-        
+
         # Получаем логи
         logs = await clean_db.get_api_logs(limit=10)
         assert len(logs) > 0
@@ -316,21 +316,21 @@ class TestDatabaseIntegration:
         """Тест пула соединений."""
         manager = DatabaseManager(db_config)
         await manager.connect()
-        
+
         # Проверяем, что пул создан
         assert manager.pool is not None
-        
+
         # Выполняем несколько параллельных запросов
         tasks = []
         for i in range(5):
             task = manager.get_all_tables()
             tasks.append(task)
-        
+
         results = await asyncio.gather(*tasks)
-        
+
         # Все запросы должны успешно выполниться
         assert all(len(result) > 0 for result in results)
-        
+
         await manager.disconnect()
 
     @pytest.mark.asyncio
@@ -347,10 +347,10 @@ class TestDatabaseIntegration:
         )
         dialog_id = await clean_db.create_dialog(user_id)
         await clean_db.add_message(dialog_id, "Тест", True)
-        
+
         # Очищаем все таблицы
         await clean_db.clear_all_tables()
-        
+
         # Проверяем, что данные удалены
         users = await clean_db.get_all_users()
         assert len(users) == 0
