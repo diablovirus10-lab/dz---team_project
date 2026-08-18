@@ -261,14 +261,11 @@ class BotLogic:
     @staticmethod
     def _extract_event(event):
         """Достать (user_id, text, payload) из события LongPoll."""
-        message = getattr(
-            event.obj,
-            "message",
-            None) or getattr(
-            event,
-            "message",
-            None) or {}
-        user_id = message.get("from_id") or getattr(event.obj, "from_id", None)
+        # В новых версиях vk_api данные сообщения находятся в event.message
+        # В старых версиях - в event.obj
+        message = getattr(event, "message", None) or getattr(
+            event, "obj", {}).get("message", {}) or {}
+        user_id = message.get("from_id") or getattr(getattr(event, "obj", None), "from_id", None)
         text = (message.get("text") or "").strip()
         payload = message.get("payload")
         if isinstance(payload, str):

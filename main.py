@@ -36,7 +36,9 @@ def main():
         for event in longpoll.listen():
             try:
                 if event.type == VkEventType.MESSAGE_NEW:
-                    logger.debug(f"Получено новое сообщение от {event.obj.get('from_id')}")
+                    # В новых версиях vk_api данные сообщения находятся в event.message
+                    message_data = event.message if hasattr(event, 'message') else event.obj
+                    logger.debug(f"Получено новое сообщение от {message_data.get('from_id')}")
                     bot.handle_event(event)
 
             except Exception as e:
