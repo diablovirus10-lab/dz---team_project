@@ -119,20 +119,35 @@ class Database:
             return self.fetch_all(query, params, dict_cursor=True)
         return self.execute_update(query, params, dict_cursor=True, returning='RETURNING' in stripped)
 
-    def get_or_create_user(self, vk_id, first_name, last_name, age, city, sex):
-        """Создание пользователя, проверяет если нет создает"""
+    def get_or_create_user(self, vk_id, first_name=None, last_name=None, age=None, city=None, sex=None):
+        """Создание пользователя или получение существующего.
+        
+        Контракт с bot_logic: принимает только vk_id (остальные параметры опциональны).
+        Если пользователь не найден, создаётся запись с минимальными данными.
+        
+        Args:
+            vk_id: ID пользователя ВКонтакте
+            first_name, last_name, age, city, sex: Опциональные данные (могут быть заполнены позже)
+        
+        Returns:
+            Словарь с данными пользователя или None при ошибке
+        """
         query = "SELECT * FROM users WHERE vk_id = %s"
         result = self.execute_dict(query, (vk_id,))
 
         if result:
             return result[0]
 
+        # Создаём нового пользователя с доступными данными
         query = """
             INSERT INTO users (vk_id, first_name, last_name, age, city, sex)
             VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING *
         """
-        result = self.execute_dict(query, (vk_id, first_name, last_name, age, city, sex))
+        result = self.execute_dict(
+            query, 
+            (vk_id, first_name, last_name, age, city, sex)
+        )
         return result[0] if result else None
 
 
@@ -240,6 +255,35 @@ class Database:
         except Exception:
             return False
 
+    def add_favorite(self, user_id, profile):
+        """Обёртка для совместимости с bot_logic.
+        
+        Args:
+            user_id: ID пользователя ВКонтакте
+            profile: Словарь с данными профиля кандидата (должен содержать 'vk_id')
+        
+        Returns:
+            True если успешно, False иначе
+        """
+        candidate_vk_id = profile.get('vk_id')
+        if not candidate_vk_id:
+            return False
+        # Получаем или создаём кандидата в БД
+        candidate = self.get_user_by_vk(candidate_vk_id)
+        if not candidate:
+            candidate = self.save_candidate(
+                vk_id=candidate_vk_id,
+                first_name=profile.get('first_name', ''),
+                last_name=profile.get('last_name', ''),
+                age=profile.get('age'),
+                city=profile.get('city', ''),
+                sex=profile.get('sex'),
+                profile_link=f"https://vk.com/id{candidate_vk_id}"
+            )
+        if not candidate:
+            return False
+        return self.add_to_favorites(user_id, candidate['id'])
+
     def remove_from_favorites(self, user_id, candidate_id):
         """Удаляем кандидата из избранного"""
         try:
@@ -278,6 +322,35 @@ class Database:
             return True
         except Exception:
             return False
+
+    def add_blacklist(self, user_id, profile):
+        """Обёртка для совместимости с bot_logic.
+        
+        Args:
+            user_id: ID пользователя ВКонтакте
+            profile: Словарь с данными профиля кандидата (должен содержать 'vk_id')
+        
+        Returns:
+            True если успешно, False иначе
+        """
+        candidate_vk_id = profile.get('vk_id')
+        if not candidate_vk_id:
+            return False
+        # Получаем или создаём кандидата в БД
+        candidate = self.get_user_by_vk(candidate_vk_id)
+        if not candidate:
+            candidate = self.save_candidate(
+                vk_id=candidate_vk_id,
+                first_name=profile.get('first_name', ''),
+                last_name=profile.get('last_name', ''),
+                age=profile.get('age'),
+                city=profile.get('city', ''),
+                sex=profile.get('sex'),
+                profile_link=f"https://vk.com/id{candidate_vk_id}"
+            )
+        if not candidate:
+            return False
+        return self.add_to_blacklist(user_id, candidate['id'])
 
     def remove_from_blacklist(self, user_id, candidate_id):
         """Удаляем кандидата из чёрного списка"""
@@ -318,11 +391,61 @@ class Database:
         except Exception:
             return False
 
+    def mark_viewed_profile(self, user_id, profile):
+        """Обёртка для совместимости с bot_logic.
+        
+        Args:
+            user_id: ID пользователя ВКонтакте
+            profile: Словарь с данными профиля кандидата (должен содержать 'vk_id')
+        
+        Returns:
+            True если успешно, False иначе
+        """
+        candidate_vk_id = profile.get('vk_id')
+        if not candidate_vk_id:
+            return False
+        # Получаем или создаём кандидата в БД
+        candidate = self.get_user_by_vk(candidate_vk_id)
+        if not candidate:
+            candidate = self.save_candidate(
+                vk_id=candidate_vk_id,
+                first_name=profile.get('first_name', ''),
+                last_name=profile.get('last_name', ''),
+                age=profile.get('age'),
+                city=profile.get('city', ''),
+                sex=profile.get('sex'),
+                profile_link=f"https://vk.com/id{candidate_vk_id}"
+            )
+        if not candidate:
+            return False
+        return self.mark_viewed(user_id, candidate['id'])
+
     def get_viewed(self, user_id):
         """Получаем список ID просмотренных кандидатов"""
         query = "SELECT candidate_id FROM viewed_candidates WHERE user_id = %s"
         result = self.execute(query, (user_id,))
         return [row[0] for row in result] if result else []
+
+    def get_viewed_vk_ids(self, user_id):
+        """Обёртка для совместимости с bot_logic.
+        
+        Возвращает множество VK IDs просмотренных кандидатов.
+        
+        Args:
+            user_id: ID пользователя ВКонтакте
+        
+        Returns:
+            set[int]: Множество VK IDs просмотренных кандидатов
+        """
+        viewed_db_ids = self.get_viewed(user_id)
+        if not viewed_db_ids:
+            return set()
+        
+        # Получаем VK IDs кандидатов из БД
+        placeholders = ','.join('%s' for _ in viewed_db_ids)
+        query = f"SELECT vk_id FROM candidates WHERE id IN ({placeholders})"
+        result = self.execute(query, viewed_db_ids)
+        return set(row[0] for row in result) if result else set()
 
     def save_user_interests(self, user_id, interests):
         """Сохраняем интересы пользователя атомарно (одной транзакцией)"""

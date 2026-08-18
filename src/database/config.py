@@ -35,23 +35,30 @@ class DatabaseConfig:
 
 @dataclass
 class VKConfig:
-    TOKEN: str = os.getenv('VK_TOKEN', '')
-    GROUP_ID: int = int(os.getenv('VK_GROUP_ID', '0'))
+    TOKEN: str = os.getenv('VK_TOKEN', '') or os.getenv('VK_GROUP_TOKEN', '')
+    GROUP_ID: int = int(os.getenv('VK_GROUP_ID', '0') or '0')
     API_VERSION: str = os.getenv('VK_API_VERSION', '5.199')
     
     def __post_init__(self):
+        # Не вызываем ошибку при инициализации модуля, чтобы разрешить импорт без .env
+        # Валидация будет выполнена при создании экземпляра бота
+        pass
+    
+    def is_valid(self) -> bool:
+        return bool(self.TOKEN and self.GROUP_ID > 0)
+    
+    def validate(self):
+        """Явная валидация конфигурации."""
         if not self.TOKEN:
             raise ValueError(
                 "VK_TOKEN не установлен в .env файле. "
+                "Используйте переменные VK_TOKEN или VK_GROUP_TOKEN."
             )
         if self.GROUP_ID <= 0:
             raise ValueError(
                 "VK_GROUP_ID должен быть положительным числом. "
                 "ID группы можно найти в настройках сообщества VK."
             )
-    
-    def is_valid(self) -> bool:
-        return bool(self.TOKEN and self.GROUP_ID > 0)
 
 
 @dataclass

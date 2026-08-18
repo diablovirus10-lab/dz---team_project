@@ -158,7 +158,7 @@ class BotLogic:
 
         current = queue.pop(0)
         self.state_manager.update_data(user_id, queue=queue, current=current)
-        self._db_call("mark_viewed", user_id, current)
+        self._db_call("mark_viewed_profile", user_id, current)
 
         # до 3 фото — вложениями (photo_id хранится в формате "photo<owner>_<id>")
         attachments = [ph["photo_id"] for ph in current.get("photos", [])[:3] if ph.get("photo_id")]
