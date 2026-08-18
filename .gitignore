@@ -1,37 +1,41 @@
 ```
-# Dependencies
-.venv/
-venv/
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git/modules/
+.DS_Store
+.hg
+.svn
+.wafpickle-*
+build/
+.sconsign.dblite
+._*
+*.swp
+*.swo
+*~
+.pytest_cache/
+.mypy_cache/
+.venv/
 
 # Environment
 .env
-.env.local
-.env.*
-
-# Tests
-.pytest_cache/
-.coverage
-coverage/
 
 # Logs
-*.log
-
-# Editors
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Build/dist
-dist/
-build/
-target/
-
-# OS
-.DS_Store
-Thumbs.db
+logs/
 ```
