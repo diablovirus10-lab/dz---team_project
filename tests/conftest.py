@@ -56,7 +56,8 @@ class FakeDatabase:
     def add_blacklist(self, user_vk_id, profile):
         self.blacklist.append((user_vk_id, profile["vk_id"]))
 
-    def mark_viewed(self, user_vk_id, profile):
+    def mark_viewed_profile(self, user_vk_id, profile):
+        """Обёртка для совместимости с bot_logic (принимает профиль вместо candidate_id)."""
         self.viewed.append((user_vk_id, profile["vk_id"]))
         self.viewed_ids.setdefault(user_vk_id, set()).add(profile["vk_id"])
 

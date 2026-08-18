@@ -1,46 +1,61 @@
 """Точка входа в бота."""
-# import vk_api
+import os
+import logging
+from vk_api import VkApi
+from vk_api.longpoll import VkLongPoll, VkEventType
 
-# # Твой токен сообщества
-# TOKEN = 'vk1.a.He0WtlilSPgweUd6rljYEgRgNTn554hPiXLtiLOy1Yd3r7OowVKjFWvc69epozuejaCQbc_95GLulS1MOuLqP-B51PAJpxZlRmT-dy_48YokM6oUPtrQVrkSYNKUdgXTVB-57DCiBKVdRyufeyFxJx6u53yaYVuMfIzRx5PtNsNw5BoSIvPFUfcSQZfgq3L3aTrs_NHTPjgmecWSE5-ZdA'
-# # Буквенный адрес группы (без https://vk.com/)
-# GROUP_SHORT_NAME = 'club240686337'
+from src.bot.bot_logic import BotLogic
+from src.database.db_manager import Database
+from src.vk_api_bot.vk_client import VKClient
+from src.bot.state_manager import StateManager
+from src.utils.logger import get_logger
 
-# # Инициализация API
-# vk = vk_api.VkApi(token=TOKEN)
-# api = vk.get_api()
-
-# # Получаем информацию о группе
-# try:
-#     group_info = api.groups.getById(group_id=GROUP_SHORT_NAME)
-#     numeric_id = group_info[0]['id']
-#     print(f"✅ Числовой ID группы: {numeric_id}")
-#     print(f"📝 Название: {group_info[0]['name']}")
-# except Exception as e:
-#     print(f" Ошибка: {e}")
+# Настройка логгера
+logger = get_logger(__name__)
 
 
-
-# import requests
-
-
-# class VK:
-
-#    def __init__(self, access_token, user_id, version='5.199'):
-#        self.token = access_token
-#        self.id = user_id
-#        self.version = version
-#        self.params = {'access_token': self.token, 'v': self.version}
+def create_bot_instance():
+    """Создать и настроить экземпляр бота."""
+    # Инициализация клиентов
+    vk_client = VKClient()
+    database = Database()
+    state_manager = StateManager()
+    
+    bot = BotLogic(database=database, vk_client=vk_client, state_manager=state_manager)
+    return bot
 
 
-#    def users_info(self):
-#        url = 'https://api.vk.com/method/users.get'
-#        params = {'user_ids': self.id}
-#        response = requests.get(url, params={**self.params, **params})
-#        return response.json()
+def main():
+    """Основная функция запуска бота."""
+    logger.info("Запуск VK бота...")
+    
+    try:
+        # Инициализация бота
+        bot = create_bot_instance()
+        logger.info("Бот успешно инициализирован")
+        
+        # Подключение к VK API через LongPoll
+        vk_session = VkApi(token=os.getenv('VK_GROUP_TOKEN'))
+        longpoll = VkLongPoll(vk_session, group_id=int(os.getenv('VK_GROUP_ID', '0')))
+        
+        logger.info("LongPoll подключен. Ожидание событий...")
+        
+        # Основной цикл обработки событий
+        for event in longpoll.listen():
+            try:
+                if event.type == VkEventType.MESSAGE_NEW:
+                    logger.debug(f"Получено новое сообщение от {event.obj.get('from_id')}")
+                    bot.handle_event(event)
+                    
+            except Exception as e:
+                logger.error(f"Ошибка при обработке события: {e}", exc_info=True)
+                
+    except KeyboardInterrupt:
+        logger.info("Бот остановлен пользователем")
+    except Exception as e:
+        logger.critical(f"Критическая ошибка: {e}", exc_info=True)
+        raise
 
-# access_token = 'vk1.a.He0WtlilSPgweUd6rljYEgRgNTn554hPiXLtiLOy1Yd3r7OowVKjFWvc69epozuejaCQbc_95GLulS1MOuLqP-B51PAJpxZlRmT-dy_48YokM6oUPtrQVrkSYNKUdgXTVB-57DCiBKVdRyufeyFxJx6u53yaYVuMfIzRx5PtNsNw5BoSIvPFUfcSQZfgq3L3aTrs_NHTPjgmecWSE5-ZdA'
-# user_id = 'g_u_k_69'
-# vk = VK(access_token, user_id)
 
-# print(vk.users_info())
+if __name__ == '__main__':
+    main()

@@ -14,6 +14,7 @@
 | `test_bot_logic.py` | Сквозные сценарии диалога: меню → поиск → анкеты → лайки |
 | `test_database.py` | Тесты слоя БД — владелец: ответственный за `src/database` |
 | `test_vk_api.py` | Тесты VK-обёртки — владелец: ответственный за `src/vk_api` |
+| `integration/test_database_integration.py` | Интеграционные тесты с реальной PostgreSQL |
 
 ## Запуск
 
@@ -25,6 +26,28 @@ python -m pytest tests -v              # все тесты
 python -m pytest tests/test_bot_logic.py -v   # один файл
 python -m pytest tests -k "age" -v     # только тесты с "age" в имени
 ```
+
+### Запуск интеграционных тестов
+
+Для интеграционных тестов требуется PostgreSQL:
+
+```bash
+# Вариант 1: Docker (рекомендуется)
+docker run -d --name vk-bot-postgres \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=vk_bot_test \
+  -p 5432:5432 \
+  postgres:15-alpine
+sleep 5
+pytest tests/integration/test_database_integration.py -v
+docker stop vk-bot-postgres && docker rm vk-bot-postgres
+
+# Вариант 2: Только unit-тесты (без БД)
+pytest tests -m "not integration" -v
+```
+
+Подробности в [tests/integration/README.md](../tests/integration/README.md).
 
 ## Контракт и фейки
 

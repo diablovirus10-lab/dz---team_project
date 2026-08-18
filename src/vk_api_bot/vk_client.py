@@ -1,4 +1,5 @@
 import os
+import json
 from typing import Any, Dict, List, Optional
 import vk_api
 
@@ -165,3 +166,43 @@ class VKClient:
                 handle_vk_api_error(error)
             except VKAccessDeniedError:
                 return 0
+
+    @retry_on_rate_limit()
+    def send_message(self, user_id: int, text: str, keyboard=None, attachments=None) -> bool:
+        """Отправить сообщение пользователю через VK API.
+        
+        Args:
+            user_id: ID пользователя ВКонтакте
+            text: Текст сообщения
+            keyboard: Inline-клавиатура (словарь в формате VK)
+            attachments: Список вложений (например, ["photo123_456", ...])
+        
+        Returns:
+            True если сообщение отправлено успешно, False иначе
+        """
+        params: Dict[str, Any] = {
+            'peer_id': user_id,
+            'message': text,
+            'random_id': 0,  # Будет заменён на уникальное значение
+        }
+        
+        # Добавляем случайное число для random_id
+        import random
+        params['random_id'] = random.randint(-2**31, 2**31 - 1)
+        
+        # Добавляем клавиатуру если есть
+        if keyboard is not None:
+            params['keyboard'] = json.dumps(keyboard)
+        
+        # Добавляем вложения если есть
+        if attachments:
+            params['attachment'] = ','.join(str(a) for a in attachments)
+        
+        try:
+            response = self.api.messages.send(**params)
+            return response is not None and response != 0
+        except vk_api.ApiError as error:
+            handle_vk_api_error(error)
+            return False
+        except Exception:
+            return False
