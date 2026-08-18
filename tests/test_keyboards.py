@@ -51,7 +51,7 @@ def test_gender_keyboard_commands():
 
 
 def test_browsing_keyboard_commands():
-    assert _commands(get_browsing_keyboard()) == {"like", "dislike", "next", "menu"}
+    assert _commands(get_browsing_keyboard()) == {"like", "dislike", "next", "menu", "photo_like"}
 
 
 def test_cancel_keyboard_has_menu():

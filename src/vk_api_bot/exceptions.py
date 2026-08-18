@@ -49,3 +49,4 @@ class VKPhotoError(VKAPIError):
     """Ошибка при работе с фотографиями"""
     def __init__(self, message: str = "Failed to fetch photos", request_params=None):
         super().__init__(message, code=0, request_params=request_params)
+

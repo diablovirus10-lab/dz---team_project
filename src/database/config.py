@@ -76,6 +76,7 @@ class LoggingConfig:
         if log_dir:
             os.makedirs(log_dir, exist_ok=True)
 
+
 db_config = DatabaseConfig()
 vk_config = VKConfig()
 logging_config = LoggingConfig()

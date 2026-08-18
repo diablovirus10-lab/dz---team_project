@@ -8,6 +8,9 @@ __pycache__/
 env/
 venv/
 .venv/
+.ENV
+.ENV.*
+.venv.bak/
 pip-log.txt
 pip-delete-this-directory.txt
 .tox/
@@ -18,24 +21,32 @@ nosetests.xml
 coverage.xml
 *.cover
 *.log
-.git/modules/
-.DS_Store
-.hg
-.svn
-.wafpickle-*
-build/
-.sconsign.dblite
-._*
-*.swp
-*.swo
-*~
 .pytest_cache/
-.mypy_cache/
-.venv/
+.hypothesis/
+
+# Database
+*.sqlite
+*.db
 
 # Environment
 .env
+.env.local
+.env.*
+!.env.example
 
-# Logs
-logs/
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+build/
+*.egg-info/
 ```

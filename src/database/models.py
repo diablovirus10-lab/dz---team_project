@@ -6,21 +6,26 @@ MIN_AGE = 14
 MAX_AGE = 100
 VALID_SEX_VALUES = (0, 1, 2)
 
+
 def _check_positive_int(value: Any, field_name: str) -> None:
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         raise ValueError(f"Поле '{field_name}' должно быть положительным int, получено: {value!r}")
+
 
 def _check_non_negative_int(value: Any, field_name: str) -> None:
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         raise ValueError(f"Поле '{field_name}' должно быть целым >= 0, получено: {value!r}")
 
+
 def _check_non_empty_str(value: Any, field_name: str) -> None:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"Поле '{field_name}' должно быть непустой строкой, получено: {value!r}")
 
+
 def _check_optional_str(value: Any, field_name: str) -> None:
     if value is not None:
         _check_non_empty_str(value, field_name)
+
 
 def _check_age(value: Any) -> None:
     if value is None:
@@ -28,17 +33,21 @@ def _check_age(value: Any) -> None:
     if isinstance(value, bool) or not isinstance(value, int) or not MIN_AGE <= value <= MAX_AGE:
         raise ValueError(f"Возраст должен быть в диапазоне {MIN_AGE}..{MAX_AGE} или None, получено: {value!r}")
 
+
 def _check_sex(value: Any) -> None:
     if value not in VALID_SEX_VALUES:
         raise ValueError(f"Пол должен быть одним из {VALID_SEX_VALUES}, получено: {value!r}")
+
 
 def _check_bool(value: Any, field_name: str) -> None:
     if not isinstance(value, bool):
         raise ValueError(f"Поле '{field_name}' должно быть bool, получено: {value!r}")
 
+
 def _check_datetime(value: Any, field_name: str) -> None:
     if not isinstance(value, datetime):
         raise ValueError(f"Поле '{field_name}' должно быть datetime, получено: {value!r}")
+
 
 def _check_weight(value: Any, field_name: str) -> None:
     """Проверка веса критерия (от 0.0 до 1.0)"""

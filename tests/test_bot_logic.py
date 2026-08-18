@@ -61,7 +61,11 @@ class TestSearchFlow:
 
     def test_search_params_passed_to_vk(self, logic, fake_vk, event_factory):
         run_search_flow(logic, event_factory, sex_cmd="gender_m", age="30", city="Казань")
-        assert fake_vk.search_calls == [{"sex": 2, "age": 30, "city": "Казань"}]
+        call = fake_vk.search_calls[0]
+        assert call["sex"] == 2
+        assert call["age_from"] == 30
+        assert call["age_to"] == 30
+        assert call["city_id"] == 1  # find_city_id возвращает 1 для "Казань"
 
     def test_no_results_returns_to_menu(self, logic, fake_vk, state_manager, event_factory):
         fake_vk.profiles = []

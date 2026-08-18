@@ -20,6 +20,7 @@ class FakeVKClient:
         self.sent = []
         self.profiles = []
         self.search_calls = []
+        self.city_search_calls = []
 
     def send_message(self, user_id, text, keyboard=None, attachments=None):
         self.sent.append({
@@ -29,9 +30,21 @@ class FakeVKClient:
             "attachments": attachments,
         })
 
-    def search_users(self, sex, age, city):
-        self.search_calls.append({"sex": sex, "age": age, "city": city})
-        return list(self.profiles)
+    def search_users(self, sex, age_from, age_to, city_id=None, offset=0, count=20):
+        self.search_calls.append({
+            "sex": sex,
+            "age_from": age_from,
+            "age_to": age_to,
+            "city_id": city_id,
+            "offset": offset,
+            "count": count,
+        })
+        return {"items": list(self.profiles), "total": len(self.profiles)}
+
+    def find_city_id(self, city_name):
+        self.city_search_calls.append(city_name)
+        # Возвращаем фиктивный ID города для тестов
+        return 1 if city_name else None
 
 
 class FakeDatabase:
