@@ -85,7 +85,8 @@ def make_event(user_id=1, text="", cmd=None):
     """Событие, похожее на событие VkBotLongPoll (MESSAGE_NEW)."""
     payload = json.dumps({"cmd": cmd}) if cmd else None
     message = {"from_id": user_id, "text": text, "payload": payload}
-    return SimpleNamespace(obj=SimpleNamespace(message=message, from_id=user_id))
+    # В новых версиях vk_api данные находятся в event.message, а не event.obj.message
+    return SimpleNamespace(message=message, from_id=user_id)
 
 
 def make_profile(vk_id, first_name="Анна", last_name="Смирнова",
