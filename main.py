@@ -36,9 +36,21 @@ def main():
         for event in longpoll.listen():
             try:
                 if event.type == VkEventType.MESSAGE_NEW:
-                    # В новых версиях vk_api данные сообщения находятся в event.message
-                    message_data = event.message if hasattr(event, 'message') else event.obj
-                    logger.debug(f"Получено новое сообщение от {message_data.get('from_id')}")
+                    # В новых версиях vk_api структура события может отличаться
+                    # Пробуем разные варианты получения данных сообщения
+                    if hasattr(event, 'message') and isinstance(event.message, dict):
+                        message_data = event.message
+                    elif hasattr(event, 'obj') and isinstance(event.obj, dict):
+                        message_data = event.obj
+                    elif hasattr(event, 'message'):
+                        # Если message не dict, пробуем получить данные через raw
+                        message_data = event.raw.get('object', {}) if hasattr(event, 'raw') else {}
+                    else:
+                        logger.warning(f"Неизвестная структура события: {type(event)}")
+                        continue
+                    
+                    from_id = message_data.get('from_id') or message_data.get('user_id')
+                    logger.debug(f"Получено новое сообщение от {from_id}")
                     bot.handle_event(event)
 
             except Exception as e:

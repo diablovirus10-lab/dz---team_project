@@ -261,18 +261,29 @@ class BotLogic:
     @staticmethod
     def _extract_event(event):
         """Достать (user_id, text, payload) из события LongPoll."""
-        # В новых версиях vk_api данные сообщения находятся в event.message
-        # В старых версиях - в event.obj
-        message = getattr(event, "message", None) or getattr(
-            event, "obj", {}).get("message", {}) or {}
-        user_id = message.get("from_id") or getattr(getattr(event, "obj", None), "from_id", None)
-        text = (message.get("text") or "").strip()
-        payload = message.get("payload")
+        # В новых версиях vk_api структура события может отличаться
+        # Пробуем разные варианты получения данных сообщения
+        message = None
+        
+        if hasattr(event, 'message') and isinstance(event.message, dict):
+            message = event.message
+        elif hasattr(event, 'obj') and isinstance(event.obj, dict):
+            message = event.obj.get('message', {}) or event.obj
+        elif hasattr(event, 'raw'):
+            message = event.raw.get('object', {}).get('message', {}) or {}
+        else:
+            message = {}
+        
+        user_id = message.get('from_id') or message.get('user_id')
+        text = (message.get('text') or '').strip()
+        payload = message.get('payload')
+        
         if isinstance(payload, str):
             try:
                 payload = json.loads(payload)
             except ValueError:
                 payload = None
+                
         return user_id, text, payload
 
     def _ensure_user(self, user_id):
