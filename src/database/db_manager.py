@@ -250,16 +250,21 @@ class Database:
         except Exception:
             return False
 
-    def add_favorite(self, user_id, profile):
+    def add_favorite(self, vk_id, profile):
         """Обёртка для совместимости с bot_logic.
 
         Args:
-            user_id: ID пользователя ВКонтакте
+            vk_id: ID пользователя ВКонтакте
             profile: Словарь с данными профиля кандидата (должен содержать 'vk_id')
 
         Returns:
             True если успешно, False иначе
         """
+        user = self.get_user_by_vk(vk_id)
+        if not user:
+            return False
+        user_id = user["id"]
+
         candidate_vk_id = profile.get('vk_id')
         if not candidate_vk_id:
             return False
@@ -288,8 +293,20 @@ class Database:
         except Exception:
             return False
 
-    def get_favorites(self, user_id):
-        """Получаем список избранных кандидатов для пользователя"""
+    def get_favorites(self, vk_id):
+        """Получаем список избранных кандидатов для пользователя (по vk_id).
+
+        Args:
+            vk_id: ID пользователя ВКонтакте
+
+        Returns:
+            list[dict]: Список избранных кандидатов
+        """
+        user = self.get_user_by_vk(vk_id)
+        if not user:
+            return []
+        user_id = user["id"]
+
         query = """
             SELECT c.*, f.added_at
             FROM favorites f
@@ -318,16 +335,21 @@ class Database:
         except Exception:
             return False
 
-    def add_blacklist(self, user_id, profile):
+    def add_blacklist(self, vk_id, profile):
         """Обёртка для совместимости с bot_logic.
 
         Args:
-            user_id: ID пользователя ВКонтакте
+            vk_id: ID пользователя ВКонтакте
             profile: Словарь с данными профиля кандидата (должен содержать 'vk_id')
 
         Returns:
             True если успешно, False иначе
         """
+        user = self.get_user_by_vk(vk_id)
+        if not user:
+            return False
+        user_id = user["id"]
+
         candidate_vk_id = profile.get('vk_id')
         if not candidate_vk_id:
             return False
@@ -386,16 +408,21 @@ class Database:
         except Exception:
             return False
 
-    def mark_viewed_profile(self, user_id, profile):
+    def mark_viewed_profile(self, vk_id, profile):
         """Обёртка для совместимости с bot_logic.
 
         Args:
-            user_id: ID пользователя ВКонтакте
+            vk_id: ID пользователя ВКонтакте
             profile: Словарь с данными профиля кандидата (должен содержать 'vk_id')
 
         Returns:
             True если успешно, False иначе
         """
+        user = self.get_user_by_vk(vk_id)
+        if not user:
+            return False
+        user_id = user["id"]
+
         candidate_vk_id = profile.get('vk_id')
         if not candidate_vk_id:
             return False
@@ -421,25 +448,32 @@ class Database:
         result = self.execute(query, (user_id,))
         return [row[0] for row in result] if result else []
 
-    def get_viewed_vk_ids(self, user_id):
+    def get_viewed_vk_ids(self, vk_id):
         """Обёртка для совместимости с bot_logic.
 
-        Возвращает множество VK IDs просмотренных кандидатов.
+        Принимает vk_id (VK ID пользователя) и возвращает
+        множество VK IDs просмотренных кандидатов.
 
         Args:
-            user_id: ID пользователя ВКонтакте
+            vk_id: ID пользователя ВКонтакте
 
         Returns:
             set[int]: Множество VK IDs просмотренных кандидатов
         """
+        user = self.get_user_by_vk(vk_id)
+        if not user:
+            return set()
+        user_id = user["id"]
+
         viewed_db_ids = self.get_viewed(user_id)
         if not viewed_db_ids:
             return set()
 
-        # Получаем VK IDs кандидатов из БД
-        placeholders = ','.join('%s' for _ in viewed_db_ids)
+        # Безопасный параметризованный запрос
+        # Используем %s для каждого значения — psycopg2 сам экранирует
+        placeholders = ','.join(['%s'] * len(viewed_db_ids))
         query = f"SELECT vk_id FROM candidates WHERE id IN ({placeholders})"
-        result = self.execute(query, viewed_db_ids)
+        result = self.execute(query, tuple(viewed_db_ids))
         return set(row[0] for row in result) if result else set()
 
     def save_user_interests(self, user_id, interests):
@@ -651,6 +685,143 @@ class Database:
             JOIN photos p ON pl.photo_id = p.id
             WHERE pl.user_id = %s AND pl.is_liked = TRUE
             ORDER BY pl.created_at DESC
+        """
+        return self.execute_dict(query, (user_id,))
+
+    def delete_user(self, vk_id):
+        """
+        Удаляет пользователя и все связанные данные из базы данных.
+
+        Args:
+            vk_id: ID пользователя ВКонтакте
+
+        Returns:
+            True если успешно, False иначе
+        """
+        try:
+            user = self.get_user_by_vk(vk_id)
+            if not user:
+                return True
+
+            user_id = user["id"]
+
+            # Удаляем все связанные записи (CASCADE сделает основную работу)
+            query = "DELETE FROM users WHERE id = %s"
+            self.execute(query, (user_id,))
+            return True
+        except Exception:
+            return False
+
+    def update_user_profile(self, vk_id, first_name=None, last_name=None,
+                            age=None, city=None, sex=None):
+        """
+        Обновляет данные пользователя в БД.
+
+        Args:
+            vk_id: ID пользователя ВКонтакте
+            first_name, last_name, age, city, sex: Данные для обновления
+
+        Returns:
+            True если успешно, False иначе
+        """
+        try:
+            user = self.get_user_by_vk(vk_id)
+            if not user:
+                return False
+
+            user_id = user["id"]
+            query = """
+                UPDATE users
+                SET first_name = COALESCE(%s, first_name),
+                    last_name = COALESCE(%s, last_name),
+                    age = COALESCE(%s, age),
+                    city = COALESCE(%s, city),
+                    sex = COALESCE(%s, sex)
+                WHERE id = %s
+            """
+            self.execute(query, (first_name, last_name, age, city, sex, user_id))
+            return True
+        except Exception:
+            return False
+
+    def save_user_photos(self, vk_id, photos):
+        """
+        Сохраняет фотографии пользователя.
+
+        Args:
+            vk_id: ID пользователя ВКонтакте
+            photos: Список словарей с данными фотографий
+
+        Returns:
+            True если успешно, False иначе
+        """
+        try:
+            user = self.get_user_by_vk(vk_id)
+            if not user:
+                return False
+
+            user_id = user["id"]
+
+            # Проверяем, есть ли уже кандидат
+            query = "SELECT * FROM candidates WHERE vk_id = %s"
+            result = self.execute_dict(query, (vk_id,))
+
+            if result:
+                candidate_id = result[0]["id"]
+            else:
+                # Создаем кандидата
+                query = """
+                    INSERT INTO candidates (vk_id, first_name, last_name, age, city, sex, profile_link)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                """
+                result = self.execute_dict(query, (
+                    vk_id,
+                    user.get('first_name', ''),
+                    user.get('last_name', ''),
+                    user.get('age'),
+                    user.get('city', ''),
+                    user.get('sex'),
+                    f"https://vk.com/id{vk_id}"
+                ))
+                if not result:
+                    return False
+                candidate_id = result[0]["id"]
+
+            # Сохраняем фото
+            for photo in photos:
+                self.save_photo(
+                    candidate_id=candidate_id,
+                    photo_url=photo.get('photo_url', ''),
+                    photo_id=photo.get('photo_id', ''),
+                    is_avatar=photo.get('is_avatar', False)
+                )
+
+            return True
+        except Exception:
+            return False
+
+    def get_blacklist_vk(self, vk_id):
+        """
+        Получает черный список пользователя по vk_id.
+
+        Args:
+            vk_id: ID пользователя ВКонтакте
+
+        Returns:
+            list[dict]: Список заблокированных кандидатов
+        """
+        user = self.get_user_by_vk(vk_id)
+        if not user:
+            return []
+
+        user_id = user["id"]
+        query = """
+            SELECT c.*, b.added_at
+            FROM blacklist b
+            JOIN candidates c ON b.candidate_id = c.id
+            WHERE b.user_id = %s
+            ORDER BY b.added_at DESC
         """
         return self.execute_dict(query, (user_id,))
 

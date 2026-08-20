@@ -1,5 +1,6 @@
 import os
 import json
+import secrets
 from typing import Any, Dict, List, Optional
 import vk_api
 
@@ -26,7 +27,7 @@ class VKClient:
         group_id_raw = os.getenv('VK_GROUP_ID')
         self.group_id: Optional[int] = int(group_id_raw) if group_id_raw else None
 
-        api_version = os.getenv('VK_API_VERSION', '5.131')
+        api_version = os.getenv('VK_API_VERSION', '5.199')
 
         self.session = vk_api.VkApi(token=self.token, api_version=api_version)
         self.api = self.session.get_api()
@@ -109,6 +110,21 @@ class VKClient:
             photos[0]['is_avatar'] = True
         return photos
 
+    def get_user_photos_for_profile(self, vk_id: int, max_photos: int = 3) -> List[Dict[str, Any]]:
+        """
+        Получает фотографии пользователя для профиля.
+
+        Args:
+            vk_id: ID пользователя ВКонтакте
+            max_photos: максимальное количество фото (по умолчанию 3)
+
+        Returns:
+            Список словарей с данными фотографий
+        """
+        photos = self.get_user_photos(vk_id, count=max_photos + 2)
+        # Возвращаем не более max_photos фото, первое - аватарка
+        return photos[:max_photos]
+
     @staticmethod
     def _split_interests_text(text: Optional[str]) -> List[str]:
         if not text:
@@ -187,12 +203,16 @@ class VKClient:
         }
 
         # Добавляем случайное число для random_id
-        import random
-        params['random_id'] = random.randint(-2**31, 2**31 - 1)
+        params['random_id'] = secrets.randbits(31)
 
         # Добавляем клавиатуру если есть
         if keyboard is not None:
-            params['keyboard'] = json.dumps(keyboard)
+            import logging
+            logger = logging.getLogger(__name__)
+            # Redact payload для безопасности — скрываем sensitive данные
+            safe_keyboard = json.dumps(keyboard, ensure_ascii=False)[:200]
+            logger.info(f"Отправка клавиатуры: {safe_keyboard}")
+            params['keyboard'] = json.dumps(keyboard, ensure_ascii=False)
 
         # Добавляем вложения если есть
         if attachments:

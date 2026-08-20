@@ -5,9 +5,6 @@
 import os
 import logging
 from dataclasses import dataclass
-from dotenv import load_dotenv
-
-load_dotenv()
 
 
 @dataclass
@@ -29,7 +26,8 @@ class DatabaseConfig:
         }
 
     def get_dsn(self) -> str:
-        return f"postgresql://{self.USER}:{self.PASSWORD}@{self.HOST}:{self.PORT}/{self.NAME}"
+        """Возвращает DSN без пароля (для логов)."""
+        return f"postgresql://{self.USER}:***@{self.HOST}:{self.PORT}/{self.NAME}"
 
 
 @dataclass

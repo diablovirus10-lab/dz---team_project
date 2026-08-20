@@ -60,25 +60,28 @@ class FakeDatabase:
 
     def get_or_create_user(self, vk_id, **fields):
         self.users.setdefault(vk_id, fields)
-        return vk_id
+        return {"id": vk_id, "vk_id": vk_id, **fields}
 
-    def add_favorite(self, user_vk_id, profile):
-        self.favorites.append((user_vk_id, profile["vk_id"]))
-        self._favorite_profiles.setdefault(user_vk_id, []).append(profile)
+    def add_favorite(self, vk_id, profile):
+        self.favorites.append((vk_id, profile["vk_id"]))
+        self._favorite_profiles.setdefault(vk_id, []).append(profile)
+        return True
 
-    def add_blacklist(self, user_vk_id, profile):
-        self.blacklist.append((user_vk_id, profile["vk_id"]))
+    def add_blacklist(self, vk_id, profile):
+        self.blacklist.append((vk_id, profile["vk_id"]))
+        return True
 
-    def mark_viewed_profile(self, user_vk_id, profile):
-        """Обёртка для совместимости с bot_logic (принимает профиль вместо candidate_id)."""
-        self.viewed.append((user_vk_id, profile["vk_id"]))
-        self.viewed_ids.setdefault(user_vk_id, set()).add(profile["vk_id"])
+    def mark_viewed_profile(self, vk_id, profile):
+        """Обёртка для совместимости с bot_logic (принимает vk_id вместо candidate_id)."""
+        self.viewed.append((vk_id, profile["vk_id"]))
+        self.viewed_ids.setdefault(vk_id, set()).add(profile["vk_id"])
+        return True
 
-    def get_favorites(self, user_vk_id):
-        return list(self._favorite_profiles.get(user_vk_id, []))
+    def get_favorites(self, vk_id):
+        return list(self._favorite_profiles.get(vk_id, []))
 
-    def get_viewed_vk_ids(self, user_vk_id):
-        return set(self.viewed_ids.get(user_vk_id, set()))
+    def get_viewed_vk_ids(self, vk_id):
+        return set(self.viewed_ids.get(vk_id, set()))
 
 
 def make_event(user_id=1, text="", cmd=None):

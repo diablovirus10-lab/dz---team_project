@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any
 
 MIN_AGE = 14
-MAX_AGE = 100
+MAX_AGE = 99
 VALID_SEX_VALUES = (0, 1, 2)
 
 
